@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.6.33723.286
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BitmapConverter", "BitmapConverter.csproj", "{DE94C087-2F5F-4B81-86D3-08BBE94DB6DC}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DE94C087-2F5F-4B81-86D3-08BBE94DB6DC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DE94C087-2F5F-4B81-86D3-08BBE94DB6DC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DE94C087-2F5F-4B81-86D3-08BBE94DB6DC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DE94C087-2F5F-4B81-86D3-08BBE94DB6DC}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6E062770-D927-40D3-9353-C27A8C63A554}
+	EndGlobalSection
+EndGlobal
