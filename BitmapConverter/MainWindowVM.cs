@@ -21,10 +21,12 @@ namespace BitmapConverter
     public class MainWindowVM : ObservableObject
     {
         private const string defaultOutputFileName = "Images";
+        private const string? outputFooter = "\n#endif";
 
-        public MainWindowVM()
+        public MainWindowVM ()
         {
             OutputFilePath = Settings.Default.OutputFilePath;
+            OpenFiles(new string[] { @"C:\Users\TheMasonX\Pictures\Nona\LED_MATRIX\N.png" });
         }
 
         #region Properties
@@ -44,9 +46,7 @@ namespace BitmapConverter
             {
                 if(SetProperty(ref _outputFilePath, value))
                 {
-
-
-
+                    UpdateFileNameFromPath();
                 }
             }
         }
@@ -57,6 +57,7 @@ namespace BitmapConverter
             get => _images ??= Application.Current.Dispatcher.Invoke(() => new ObservableCollection<BitmapImage>());
             set => SetProperty(ref _images, value);
         }
+
 
         private StringBuilder? _outputTextBuilder;
         public StringBuilder OutputTextBuilder
@@ -69,7 +70,7 @@ namespace BitmapConverter
             }
         }
 
-        public string OutputText => OutputTextBuilder.ToString();
+        public string OutputText => GetOutputHeader() + OutputTextBuilder.ToString() + outputFooter;
 
 
         private Type? _bufferType;
@@ -83,24 +84,17 @@ namespace BitmapConverter
 
         #region Commands
 
-        private ICommand? _cmdOpenFiles;
-        public ICommand CMDOpenFiles => _cmdOpenFiles ??= new RelayCommand(OpenFiles);
-        
-        private void OpenFiles()
+        private ICommand? _cmdClearFiles;
+        public ICommand CMDClearFiles => _cmdClearFiles ??= new RelayCommand(ClearImages);
+
+        private void ClearImages ()
         {
             Task.Run(() =>
             {
-                OpenFileDialog fileDialog = new() { Title = "Select Images To Convert", RestoreDirectory = true, CheckFileExists=true, Multiselect = true, Filter = "Image files (*.bmp, *.jpg, *.png)|*.bmp;*.jpg;*.png|All files (*.*)|*.*" };
-                bool? result = fileDialog.ShowDialog();
-                if (!result.HasValue || !result.Value) return; //Invalid selection
+                MessageBoxResult result = MessageBox.Show("Clear all images?", "Clear All Images", MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.Cancel);
+                if (result != MessageBoxResult.OK) return; //User declined
 
-                InitOutput();
-                ClearImages();
-                foreach (var file in fileDialog.FileNames)
-                {
-                    AddImage(file);
-                }
-                EndOutput();
+                Application.Current.Dispatcher.Invoke(() => Images.Clear());
             });
         }
 
@@ -136,22 +130,47 @@ namespace BitmapConverter
         {
             Task.Run(() =>
             {
-                SaveFileDialog fileDialog = new() { Title = "Save Output .h File", FileName = OutputFileName, OverwritePrompt = true, AddExtension = true, DefaultExt=".h", RestoreDirectory = true, Filter = "Header file (*.h)|*.h|All files (*.*)|*.*" };
+                SaveFileDialog fileDialog = new() { Title = "Save Output .h File", FileName = OutputFileName, OverwritePrompt = true, AddExtension = true, DefaultExt=".h", 
+                                                    RestoreDirectory = true, Filter = "Header file (*.h)|*.h|All files (*.*)|*.*" };
                 bool? result = fileDialog.ShowDialog();
                 if (!result.HasValue || !result.Value) return; //Invalid selection
 
                 OutputFilePath = fileDialog.FileName;
 
-                if (!string.IsNullOrEmpty(OutputFilePath)) Save();
+                if (!string.IsNullOrEmpty(OutputFilePath)) Save(); //Valid FilePath
+            });
+        }
+
+        private ICommand? _cmdOpenFiles;
+        public ICommand CMDOpenFiles => _cmdOpenFiles ??= new RelayCommand(BrowseForFiles);
+
+        private void BrowseForFiles ()
+        {
+            Task.Run(() =>
+            {
+                OpenFileDialog fileDialog = new() { Title = "Select Images To Convert", RestoreDirectory = true, CheckFileExists = true, Multiselect = true,
+                                                    Filter = "Image files (*.bmp, *.jpg, *.png)|*.bmp;*.jpg;*.png|All files (*.*)|*.*" };
+                bool? result = fileDialog.ShowDialog();
+                if (!result.HasValue || !result.Value) return; //Invalid selection
+
+                OpenFiles(fileDialog.FileNames);
             });
         }
 
 
         #endregion Commands
 
-        private void ClearImages()
+        #region FileMethods
+
+        private void OpenFiles (IEnumerable<string>? files)
         {
-            Application.Current.Dispatcher.Invoke(() => Images.Clear());
+            if (!(files?.Any() ?? false)) return; // Invalid Files List
+
+            foreach (var file in files)
+            {
+                AddImage(file);
+            }
+            UpdateOutputText();
         }
 
         private void AddImage(string file)
@@ -160,33 +179,48 @@ namespace BitmapConverter
             {
                 BitmapImage image = new(new Uri(file));
                 Images.Add(image);
-                AddImageToOutput(image);
             });
         }
 
-        private void InitOutput()
-        {
-            OutputTextBuilder.Clear();
+        #endregion FileMethods
 
-            string defineName = OutputFileName.ToUpper();
-            OutputTextBuilder.AppendLine($"#ifndef {defineName}");
-            OutputTextBuilder.AppendLine($"#define {defineName}\n");
+        #region OutputText
+
+        private void UpdateOutputText()
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                OutputTextBuilder.Clear();
+                foreach (var image in Images)
+                {
+                    AddImageToOutput(image);
+                }
+            });
+            OnPropertyChanged(nameof(OutputText));
+        }
+
+        private string GetOutputHeader()
+        {
+            string? defineName = OutputFileName?.ToUpper();
+            return $"#ifndef {defineName}\n#define {defineName}\n\n";
         }
 
         private void AddImageToOutput(BitmapImage image)
         {
             if(image is null) return; // No Image
 
+            if (Images.Where(i => i.UriSource.Equals(image)).Any()) return; //Image already in the list
+
             string? uri = image?.UriSource?.ToString();
             if (string.IsNullOrEmpty(uri)) return; //Invalid URI
 
             FileInfo file = new (uri);
-            string fileName = StripExtension(file?.Name);
+            string? fileName = file?.Name?.StripExtension();
             if (string.IsNullOrEmpty(fileName)) return; //Invalid FileName
 
             //Start the Image Buffer
-            OutputTextBuilder.Append($"  {BufferType.Name} {fileName}[]");
-            OutputTextBuilder.AppendLine(" {"); //Doesn't like string interpolation with this character //TODO: Fix
+            OutputTextBuilder.AppendLine($"  \\\\Image buffer auto-generated from {uri}");
+            OutputTextBuilder.AppendLine($"  {BufferType.Name} {fileName}[] " + "{");
 
             //Output Data
             OutputTextBuilder.AppendLine($"    {WriteOutputData(image)}");
@@ -217,11 +251,7 @@ namespace BitmapConverter
             return string.Join(", ", text);
         }
 
-        private void EndOutput()
-        {
-            OutputTextBuilder.AppendLine("\n#endif");
-            OnPropertyChanged(nameof(OutputText));
-        }
+        #endregion OutputText
 
         private void UpdateFileNameFromPath()
         {
@@ -231,31 +261,17 @@ namespace BitmapConverter
                 return;
             }
 
-            string name = StripExtension(new FileInfo(OutputFilePath)?.Name);
-            if (string.IsNullOrEmpty(name))
-            {
-                OutputFileName = defaultOutputFileName;
-                return;
-            }
-
-            OutputFileName = name;
+            string? name = new FileInfo(OutputFilePath)?.Name?.StripExtension();
+            OutputFileName = string.IsNullOrEmpty(name) ? defaultOutputFileName : name;
         }
+        
 
-        private string StripExtension(string? fileName)
-        {
-            if (string.IsNullOrEmpty(fileName)) return ""; //Invalid fileName
-
-            Regex regex = new Regex(@"\..*");
-            return regex.Replace(fileName, "");
-        }
-
-        //private List<T> ConvertImageData<T>(BitmapImage image) where T : IConvertible
         private List<int> ConvertImageData(BitmapImage image)
         {
             List<int> data = new();
             if (image is null) return data;
 
-            using (Bitmap bitmap = BitmapImage2Bitmap(image))
+            using (Bitmap bitmap = image.BitmapImage2Bitmap())
             {
                 if (bitmap is null) return data;
 
@@ -264,31 +280,13 @@ namespace BitmapConverter
                     for (int y = 0; y < bitmap.Height; y++)
                     {
                         var pixel = bitmap.GetPixel(x, y);
-                        int pixelARGB = ToRGB(pixel);
+                        int pixelARGB = pixel.ToRGB();
                         data.Add(pixelARGB);
                     }
                 }
             }
 
             return data;
-        }
-
-        private int ToRGB(Color color)
-        {
-            return ((color.R & 0x0ff) << 16) | ((color.G & 0x0ff) << 8) | (color.B & 0x0ff);
-        }
-
-        private Bitmap BitmapImage2Bitmap (BitmapImage bitmapImage)
-        {
-            using (MemoryStream outStream = new())
-            {
-                BitmapEncoder enc = new BmpBitmapEncoder();
-                enc.Frames.Add(BitmapFrame.Create(bitmapImage));
-                enc.Save(outStream);
-                Bitmap bitmap = new(outStream);
-
-                return new Bitmap(bitmap);
-            }
         }
     }
 }

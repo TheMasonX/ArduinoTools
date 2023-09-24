@@ -10,3 +10,4 @@ BitmapConverter/.vs/ProjectEvaluation/bitmapconverter.metadata.v7.bin
 BitmapConverter/.vs/ProjectEvaluation/bitmapconverter.projects.v7.bin
 BitmapConverter/bin/
 BitmapConverter/obj/
+*.vsidx

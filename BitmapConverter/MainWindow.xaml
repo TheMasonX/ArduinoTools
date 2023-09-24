@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:BitmapConverter"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="MainWindow" Height="550" Width="1000">
     <Window.DataContext>
         <local:MainWindowVM/>
     </Window.DataContext>
@@ -59,14 +59,15 @@
                     <MenuItem Header="Open Files..." x:Name="Menu_File_OpenFiles" Command="{Binding CMDOpenFiles}" InputGestureText="Ctrl+O"/>
                     <MenuItem Header="Save" x:Name="Menu_File_Save" Command="{Binding CMDSave}" InputGestureText="Ctrl+S"/>
                     <MenuItem Header="Save As.." x:Name="Menu_File_SaveAs" Command="{Binding CMDSaveAs}" InputGestureText="Ctrl+Shift+S"/>
+                    <MenuItem Header="Clear Files" x:Name="Menu_File_ClearFiles" Command="{Binding CMDClearFiles}"/>
                 </MenuItem>
             </Menu>
         </Grid>
 
         <Grid Grid.Row="1" x:Name="Content_Grid">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="1*" x:Name="ImagesCol"/>
-                <ColumnDefinition Width="1*" x:Name="OutputCol"/>
+                <ColumnDefinition Width="40*" x:Name="ImagesCol"/>
+                <ColumnDefinition Width="60*" x:Name="OutputCol"/>
             </Grid.ColumnDefinitions>
             
             <DataGrid Grid.Column="0" x:Name="ImageList" ItemsSource="{Binding Images}" HeadersVisibility="Column" IsReadOnly="True" CanUserSortColumns="True" AutoGenerateColumns="False" VerticalContentAlignment="Center">
@@ -74,7 +75,7 @@
                     <DataGridTemplateColumn Header="Image" Width="75">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <Image Source="{Binding UriSource}" Width="32" Stretch="Uniform"/>
+                                <Image Source="{Binding UriSource}" Width="64" Stretch="Uniform" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
