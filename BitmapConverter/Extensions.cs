@@ -25,7 +25,34 @@ namespace BitmapConverter
             return ((color.R & 0x0ff) << 16) | ((color.G & 0x0ff) << 8) | (color.B & 0x0ff);
         }
 
-        public static Bitmap BitmapImage2Bitmap (this BitmapImage bitmapImage)
+        public static int GetIndex (this BitmapImage image, int x, int y)
+        {
+            return x + y * (int)image.Width;
+        }
+
+
+        public static List<Color> GetPixels (this BitmapImage image)
+        {
+            List<Color> data = new();
+            if (image is null) return data; //No Image
+
+            using (Bitmap bitmap = image.BitmapImageToBitmap())
+            {
+                if (bitmap is null) return data; //No Bitmap
+
+                for (int y = 0; y < bitmap.Height; y++)
+                {
+                    for (int x = 0; x < bitmap.Width; x++)
+                    {
+                        data.Add(bitmap.GetPixel(x, y));
+                    }
+                }
+            }
+
+            return data;
+        }
+
+        public static Bitmap BitmapImageToBitmap (this BitmapImage bitmapImage)
         {
             using (MemoryStream outStream = new())
             {

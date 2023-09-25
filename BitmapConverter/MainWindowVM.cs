@@ -1,27 +1,25 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using BitmapConverter.Properties;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Security.Policy;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
-using System.Drawing;
-using BitmapConverter.Properties;
 
 namespace BitmapConverter
 {
     public class MainWindowVM : ObservableObject
     {
         private const string defaultOutputFileName = "Images";
-        private const string? outputFooter = "\n#endif";
+        private const string? outputFooter = "#endif";
 
         public MainWindowVM ()
         {
@@ -56,6 +54,13 @@ namespace BitmapConverter
         {
             get => _images ??= Application.Current.Dispatcher.Invoke(() => new ObservableCollection<BitmapImage>());
             set => SetProperty(ref _images, value);
+        }
+
+        private BitmapImage _selectedImage;
+        public BitmapImage SelectedImage
+        {
+            get => _selectedImage;
+            set => SetProperty(ref _selectedImage, value);
         }
 
 
@@ -97,6 +102,17 @@ namespace BitmapConverter
                 Application.Current.Dispatcher.Invoke(() => Images.Clear());
             });
         }
+
+        private ICommand? _cmdRemoveFile;
+        public ICommand CMDRemoveFile => _cmdRemoveFile ??= new RelayCommand<object>(RemoveFile);
+
+        private void RemoveFile (object? file)
+        {
+            if(!(file is BitmapImage image)) return; //Param is not an image
+
+            Application.Current.Dispatcher.Invoke(() => Images.Remove(image));
+        }
+
 
         private ICommand? _cmdSave;
         public ICommand CMDSave => _cmdSave ??= new RelayCommand (Save);
@@ -168,6 +184,7 @@ namespace BitmapConverter
 
             foreach (var file in files)
             {
+                
                 AddImage(file);
             }
             UpdateOutputText();
@@ -177,7 +194,9 @@ namespace BitmapConverter
         {
             Application.Current.Dispatcher.Invoke(() =>
             {
-                BitmapImage image = new(new Uri(file));
+                Uri uri = new(file);
+                if (Images.Where(i => i.UriSource.Equals(uri)).Any()) return; //Image already loaded
+                BitmapImage image = new(uri);
                 Images.Add(image);
             });
         }
@@ -223,32 +242,44 @@ namespace BitmapConverter
             OutputTextBuilder.AppendLine($"  {BufferType.Name} {fileName}[] " + "{");
 
             //Output Data
-            OutputTextBuilder.AppendLine($"    {WriteOutputData(image)}");
+            OutputTextBuilder.AppendLine($"    {ImageToTextBuffer(image)}");
 
             //End the Image Buffer
-            OutputTextBuilder.AppendLine("  };");
+            OutputTextBuilder.AppendLine("  };\n");
         }
 
-        private string WriteOutputData(BitmapImage image)
+        private string ImageToTextBuffer(BitmapImage image)
         {
-            IEnumerable<string>? text = null;
-            IEnumerable<int> data = null;
-            data = ConvertImageData(image);
+            if (image is null) return ""; //No image
 
-            if (BufferType == typeof(int))
+            List<Color> data = image.GetPixels();
+            if (!data.Any()) return ""; //No pixel data
+
+            Func<Color, string> Convert = (c => c.ToRGB().ToString());
+            List<string> rowText = new();
+            List<string> colText = new();
+
+            if (BufferType == typeof(byte))
             {
-                text = data.Select(d => d.ToString());
-            }
-            else if (BufferType == typeof(byte))
-            {
-                text = data.Select(d => $"{(byte)d}");
+                Convert = (c => $"{(byte)c.ToRGB()}");
             }
             else if (BufferType == typeof(bool))
             {
-                text = data.Select(d => $"{((d > 0) ? 1 : 0)}");
+                Convert = (c => $"{((c.ToRGB() > 0) ? 1 : 0)}");
             }
 
-            return string.Join(", ", text);
+            for (int y = 0; y < (int)image.Height; y++)
+            {
+                for (int x = 0; x < (int)image.Width; x++)
+                {
+                    int index = image.GetIndex(x, y);
+                    string pixelData = Convert(data[index]);
+                    rowText.Add(pixelData);
+                }
+                colText.Add(string.Join(",\t", rowText));
+                rowText.Clear();
+            }
+            return string.Join("\n    ", colText);
         }
 
         #endregion OutputText
@@ -263,30 +294,6 @@ namespace BitmapConverter
 
             string? name = new FileInfo(OutputFilePath)?.Name?.StripExtension();
             OutputFileName = string.IsNullOrEmpty(name) ? defaultOutputFileName : name;
-        }
-        
-
-        private List<int> ConvertImageData(BitmapImage image)
-        {
-            List<int> data = new();
-            if (image is null) return data;
-
-            using (Bitmap bitmap = image.BitmapImage2Bitmap())
-            {
-                if (bitmap is null) return data;
-
-                for (int x = 0; x < bitmap.Width; x++)
-                {
-                    for (int y = 0; y < bitmap.Height; y++)
-                    {
-                        var pixel = bitmap.GetPixel(x, y);
-                        int pixelARGB = pixel.ToRGB();
-                        data.Add(pixelARGB);
-                    }
-                }
-            }
-
-            return data;
         }
     }
 }

@@ -70,7 +70,7 @@
                 <ColumnDefinition Width="60*" x:Name="OutputCol"/>
             </Grid.ColumnDefinitions>
             
-            <DataGrid Grid.Column="0" x:Name="ImageList" ItemsSource="{Binding Images}" HeadersVisibility="Column" IsReadOnly="True" CanUserSortColumns="True" AutoGenerateColumns="False" VerticalContentAlignment="Center">
+            <DataGrid Grid.Column="0" x:Name="ImageList" ItemsSource="{Binding Images}" SelectedItem="{Binding SelectedImage}" HeadersVisibility="Column" IsReadOnly="True" CanUserSortColumns="True" AutoGenerateColumns="False" VerticalContentAlignment="Center" SelectionUnit="FullRow" SelectionMode="Single">
                 <DataGrid.Columns>
                     <DataGridTemplateColumn Header="Image" Width="75">
                         <DataGridTemplateColumn.CellTemplate>
@@ -81,8 +81,13 @@
                     </DataGridTemplateColumn>
                     <DataGridTextColumn Binding="{Binding Width, StringFormat='N0'}" Header="Width"/>
                     <DataGridTextColumn Binding="{Binding Height, StringFormat='N0'}" Header="Height"/>
-                    <DataGridTextColumn Binding="{Binding BaseUri}" Header="Filepath" Width="*"/>
+                    <DataGridTextColumn Binding="{Binding UriSource}" Header="Filepath" Width="*"/>
                 </DataGrid.Columns>
+                <DataGrid.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Remove" Command="{Binding CMDRemoveFile}" CommandParameter="{Binding PlacementTarget.SelectedImage}"/>
+                    </ContextMenu>
+                </DataGrid.ContextMenu>
             </DataGrid>
             
             <Grid Grid.Column="1" x:Name="OutputGrid" VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
