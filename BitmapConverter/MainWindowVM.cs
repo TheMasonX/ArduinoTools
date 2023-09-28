@@ -278,7 +278,7 @@ namespace BitmapConverter
 
             //Start the Image Buffer
             OutputTextBuilder.AppendLine($"  //Image buffer auto-generated from {uri}");
-            OutputTextBuilder.AppendLine($"  {OutputType.TypeName} {fileName}[{(int)image.Width}][{(int)image.Height}] " + "{");
+            OutputTextBuilder.AppendLine($"  const {OutputType.TypeName} {fileName}[{(int)image.Width}][{(int)image.Height}] PROGMEM " + "{");
 
             //Output Data
             OutputTextBuilder.AppendLine($"    {ImageToTextBuffer(image)}");

@@ -56,7 +56,7 @@ namespace BitmapConverter
 
         public string FormatColor (Color color, bool inverted)
         {
-            return color.GetBrightness() < .5 ? inverted.ToString() : (!inverted).ToString();
+            return color.GetBrightness() < .5 ? (inverted ? "true" : "false") : (inverted ? "false" : "true");
         }
     }
 }
