@@ -25,6 +25,11 @@ namespace BitmapConverter
             return ((color.R & 0x0ff) << 16) | ((color.G & 0x0ff) << 8) | (color.B & 0x0ff);
         }
 
+        public static Color Invert (this Color color)
+        {
+            return Color.FromArgb(255 - color.A, 255 - color.R, 255 - color.G, 255 - color.B);
+        }
+
         public static int GetIndex (this BitmapImage image, int x, int y)
         {
             return x + y * (int)image.Width;

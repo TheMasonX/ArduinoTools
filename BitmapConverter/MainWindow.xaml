@@ -71,6 +71,9 @@
             </Grid.ColumnDefinitions>
             
             <DataGrid Grid.Column="0" x:Name="ImageList" ItemsSource="{Binding Images}" SelectedItem="{Binding SelectedImage}" HeadersVisibility="Column" IsReadOnly="True" CanUserSortColumns="True" AutoGenerateColumns="False" VerticalContentAlignment="Center" SelectionUnit="FullRow" SelectionMode="Single">
+                <DataGrid.InputBindings>
+                    <KeyBinding Key="Delete" Modifiers="" Command="{Binding CMDRemoveFile}" CommandParameter="{Binding SelectedImage}"/>
+                </DataGrid.InputBindings>
                 <DataGrid.Columns>
                     <DataGridTemplateColumn Header="Image" Width="75">
                         <DataGridTemplateColumn.CellTemplate>
@@ -85,7 +88,7 @@
                 </DataGrid.Columns>
                 <DataGrid.ContextMenu>
                     <ContextMenu>
-                        <MenuItem Header="Remove" Command="{Binding CMDRemoveFile}" CommandParameter="{Binding PlacementTarget.SelectedImage}"/>
+                        <MenuItem Header="Remove" Command="{Binding CMDRemoveFile}" CommandParameter="{Binding SelectedImage}"/>
                     </ContextMenu>
                 </DataGrid.ContextMenu>
             </DataGrid>
@@ -98,10 +101,28 @@
 
                 <StackPanel Grid.Row="0"  Orientation="Horizontal">
                     <Label Content="Output File:" VerticalAlignment="Center"/>
-                    <TextBox Text="{Binding OutputFileName}" Padding="2" VerticalAlignment="Center" VerticalContentAlignment="Center"/>
+                    <TextBox Text="{Binding OutputFileName, UpdateSourceTrigger=LostFocus}" MinWidth="100" Height="30" Padding="2" VerticalAlignment="Center" VerticalContentAlignment="Center"/>
+                    <Separator Width="25" Background="Transparent"/>
+                    <Label Content="Output Type:" VerticalAlignment="Center"/>
+                    <ComboBox ItemsSource="{Binding OutputTypes}" SelectedItem="{Binding OutputType}" VerticalAlignment="Center" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" Height="25" DisplayMemberPath="Name" ToolTip="{Binding OutputType.Description}"/>
+
+                    <Separator Width="25" Background="Transparent"/>
+                    <Label Content="Inverted:" VerticalAlignment="Center"/>
+                    <CheckBox IsChecked="{Binding Inverted}" VerticalAlignment="Center" VerticalContentAlignment="Center"/>
+                    <!--<ComboBox ItemsSource="{Binding OutputTypes}" SelectedItem="{Binding OutputType}" VerticalAlignment="Center" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" Height="25" ToolTip="{Binding OutputType.Description}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate DataType="local:IOutput">
+                                <ComboBoxItem IsSelected="False" Focusable="False" Background="Transparent">
+                                    <ComboBoxItem.Content>
+                                        <TextBlock Text="{Binding Name}" IsHitTestVisible="False"/>
+                                    </ComboBoxItem.Content>
+                                </ComboBoxItem>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>-->
                 </StackPanel>
                 
-                <TextBox Grid.Row="1" x:Name="OutputTextBox" Text="{Binding OutputText, Mode=OneWay}" IsReadOnly="True" VerticalAlignment="Stretch" VerticalContentAlignment="Stretch"/>
+                <TextBox Grid.Row="1" x:Name="OutputTextBox" Padding="2" VerticalScrollBarVisibility="Auto" ScrollViewer.CanContentScroll="True" Text="{Binding OutputText, Mode=OneWay}" IsReadOnly="True" VerticalAlignment="Stretch" VerticalContentAlignment="Stretch" FontFamily="Consolas" AutoWordSelection="True"/>
             </Grid>
         </Grid>
 

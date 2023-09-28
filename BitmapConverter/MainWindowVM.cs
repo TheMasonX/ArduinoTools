@@ -5,6 +5,7 @@ using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -24,7 +25,9 @@ namespace BitmapConverter
         public MainWindowVM ()
         {
             OutputFilePath = Settings.Default.OutputFilePath;
-            OpenFiles(new string[] { @"C:\Users\TheMasonX\Pictures\Nona\LED_MATRIX\N.png" });
+            OutputFileName = Settings.Default.OutputFileName;
+            Inverted = Settings.Default.Inverted;
+            //OpenFiles(new string[] { @"C:\Users\TheMasonX\Pictures\Nona\LED_MATRIX\N.png" });
         }
 
         #region Properties
@@ -33,7 +36,16 @@ namespace BitmapConverter
         public string OutputFileName
         {
             get => _outputFileName ??= defaultOutputFileName;
-            set => SetProperty(ref _outputFileName, value);
+            set
+            {
+                if(SetProperty(ref _outputFileName, value))
+                {
+                    Settings.Default.OutputFileName = OutputFileName;
+                    Settings.Default.Save();
+                    OnPropertyChanged(nameof(OutputText));
+                }
+            }
+
         }
 
         private string? _outputFilePath;
@@ -44,6 +56,8 @@ namespace BitmapConverter
             {
                 if(SetProperty(ref _outputFilePath, value))
                 {
+                    Settings.Default.OutputFilePath = OutputFilePath;
+                    Settings.Default.Save();
                     UpdateFileNameFromPath();
                 }
             }
@@ -63,6 +77,34 @@ namespace BitmapConverter
             set => SetProperty(ref _selectedImage, value);
         }
 
+        private bool _inverted;
+        public bool Inverted
+        {
+            get => _inverted;
+            set
+            {
+                if (SetProperty(ref _inverted, value))
+                {
+                    UpdateOutputText();
+                    Settings.Default.Inverted = Inverted;
+                    Settings.Default.Save();
+                }
+            }
+        }
+
+        private IOutput _outputType;
+        public IOutput OutputType
+        {
+            get => _outputType ??= OutputTypes[0];
+            set
+            {
+                if (SetProperty(ref _outputType, value))
+                    UpdateOutputText();
+            }
+        }
+
+        private static IOutput[] _outputTypes = { new OutputMonoInt(), new OutputRGBInt(), new OutputBool() };
+        public IOutput[] OutputTypes => _outputTypes;
 
         private StringBuilder? _outputTextBuilder;
         public StringBuilder OutputTextBuilder
@@ -76,14 +118,6 @@ namespace BitmapConverter
         }
 
         public string OutputText => GetOutputHeader() + OutputTextBuilder.ToString() + outputFooter;
-
-
-        private Type? _bufferType;
-        public Type BufferType
-        {
-            get => _bufferType ??= typeof(byte);
-            set => SetProperty(ref _bufferType, value);
-        }
 
         #endregion Properties
 
@@ -100,6 +134,7 @@ namespace BitmapConverter
                 if (result != MessageBoxResult.OK) return; //User declined
 
                 Application.Current.Dispatcher.Invoke(() => Images.Clear());
+                UpdateOutputText();
             });
         }
 
@@ -108,9 +143,10 @@ namespace BitmapConverter
 
         private void RemoveFile (object? file)
         {
-            if(!(file is BitmapImage image)) return; //Param is not an image
+            if (!(file is BitmapImage image)) return; //Param is not an image
 
             Application.Current.Dispatcher.Invoke(() => Images.Remove(image));
+            Task.Run(UpdateOutputText);
         }
 
 
@@ -148,6 +184,9 @@ namespace BitmapConverter
             {
                 SaveFileDialog fileDialog = new() { Title = "Save Output .h File", FileName = OutputFileName, OverwritePrompt = true, AddExtension = true, DefaultExt=".h", 
                                                     RestoreDirectory = true, Filter = "Header file (*.h)|*.h|All files (*.*)|*.*" };
+                if (!string.IsNullOrEmpty(Settings.Default.OutputDirectory))
+                    fileDialog.InitialDirectory = Settings.Default.OutputDirectory;
+
                 bool? result = fileDialog.ShowDialog();
                 if (!result.HasValue || !result.Value) return; //Invalid selection
 
@@ -238,8 +277,8 @@ namespace BitmapConverter
             if (string.IsNullOrEmpty(fileName)) return; //Invalid FileName
 
             //Start the Image Buffer
-            OutputTextBuilder.AppendLine($"  \\\\Image buffer auto-generated from {uri}");
-            OutputTextBuilder.AppendLine($"  {BufferType.Name} {fileName}[] " + "{");
+            OutputTextBuilder.AppendLine($"  //Image buffer auto-generated from {uri}");
+            OutputTextBuilder.AppendLine($"  {OutputType.TypeName} {fileName}[{(int)image.Width}][{(int)image.Height}] " + "{");
 
             //Output Data
             OutputTextBuilder.AppendLine($"    {ImageToTextBuffer(image)}");
@@ -255,28 +294,18 @@ namespace BitmapConverter
             List<Color> data = image.GetPixels();
             if (!data.Any()) return ""; //No pixel data
 
-            Func<Color, string> Convert = (c => c.ToRGB().ToString());
             List<string> rowText = new();
             List<string> colText = new();
-
-            if (BufferType == typeof(byte))
-            {
-                Convert = (c => $"{(byte)c.ToRGB()}");
-            }
-            else if (BufferType == typeof(bool))
-            {
-                Convert = (c => $"{((c.ToRGB() > 0) ? 1 : 0)}");
-            }
 
             for (int y = 0; y < (int)image.Height; y++)
             {
                 for (int x = 0; x < (int)image.Width; x++)
                 {
                     int index = image.GetIndex(x, y);
-                    string pixelData = Convert(data[index]);
+                    string pixelData = OutputType.FormatColor(data[index], Inverted);
                     rowText.Add(pixelData);
                 }
-                colText.Add(string.Join(",\t", rowText));
+                colText.Add("{ " + string.Join(",\t", rowText) + " },");
                 rowText.Clear();
             }
             return string.Join("\n    ", colText);
@@ -292,8 +321,16 @@ namespace BitmapConverter
                 return;
             }
 
-            string? name = new FileInfo(OutputFilePath)?.Name?.StripExtension();
-            OutputFileName = string.IsNullOrEmpty(name) ? defaultOutputFileName : name;
+            FileInfo fileInfo = new (OutputFilePath);
+            string? name = fileInfo?.Name?.StripExtension();
+            if (!string.IsNullOrEmpty(name))
+            {
+                OutputFileName = name;
+                Settings.Default.OutputDirectory = fileInfo.DirectoryName;
+                Settings.Default.Save();
+            }
+            else
+                OutputFileName = defaultOutputFileName;
         }
     }
 }
